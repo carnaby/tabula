@@ -91,7 +91,7 @@ export function buildDigest(input: DigestInput): Digest {
   const overBudget = estimateTokens(text) > budget;
   if (overBudget) {
     const [head, ...rest] = text.split('\n\n');
-    const warning = `(Over budget: ~${estimateTokens(text)} tokens of ${budget}. Pinned notes are too long; the human should shorten them in Tabula.)`;
+    const warning = `(Over budget: ~${estimateTokens(text)} tokens of ${budget} after all trimming. Shorten pinned notes or condense rules and gotchas in Tabula.)`;
     text = [head, warning, ...rest].join('\n\n');
   }
   return { text, tokens: estimateTokens(text), trimmed: [...applied], overBudget };

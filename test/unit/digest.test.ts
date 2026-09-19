@@ -108,7 +108,25 @@ describe('buildDigest', () => {
     expect(d.text).toContain('- 1 notes omitted — use search');
     expect(d.text).toContain(pinnedBody);
     expect(d.overBudget).toBe(true);
-    expect(d.text.split('\n\n')[1]).toMatch(/^\(Over budget: ~\d+ tokens of 1\./);
+    expect(d.text.split('\n\n')[1]).toMatch(/^\(Over budget: ~\d+ tokens of 1 after all trimming\./);
+  });
+
+  it('blames rules/gotchas, not pinned notes, when over budget with no notes at all', () => {
+    const longSentence = 'x '.repeat(3000).trim();
+    const input: DigestInput = {
+      project: 'omnistra',
+      date: '2026-09-19',
+      memories: [
+        mem(1, 'omnistra', 'rule', 'Rule one', longSentence, 1),
+        mem(2, 'omnistra', 'rule', 'Rule two', longSentence, 2),
+        mem(3, 'omnistra', 'gotcha', 'Gotcha one', longSentence, 3),
+      ],
+      notes: [],
+    };
+    const d = buildDigest(input);
+    expect(d.overBudget).toBe(true);
+    expect(d.text.split('\n\n')[1]).toMatch(/^\(Over budget: ~\d+ tokens of 1500 after all trimming\./);
+    expect(d.text).not.toContain('Pinned note');
   });
 });
 
