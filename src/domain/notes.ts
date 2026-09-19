@@ -3,7 +3,7 @@ import type { Db } from '../db/client.js';
 import { notes } from '../db/schema.js';
 import { notFound } from './errors.js';
 import { requireProject } from './projects.js';
-import { normalizeTags, validateNoteText } from './validation.js';
+import { normalizeTags, rejectNul, validateNoteText } from './validation.js';
 
 const cols = {
   id: notes.id,
@@ -40,12 +40,14 @@ export async function createNote(
 ): Promise<Note> {
   await requireProject(db, input.projectId);
   const text = validateNoteText({ title: input.title, summary: input.summary ?? '' });
+  const body = input.body ?? '';
+  rejectNul(body, 'body');
   const [row] = await db
     .insert(notes)
     .values({
       projectId: input.projectId,
       ...text,
-      body: input.body ?? '',
+      body,
       tags: normalizeTags(input.tags),
       pinned: input.pinned ?? false,
     })
@@ -61,6 +63,7 @@ export async function updateNote(
   const current = await getNote(db, id);
   if (!current) throw notFound(`note ${id} does not exist`);
   const text = validateNoteText({ title: patch.title ?? current.title, summary: patch.summary ?? current.summary });
+  if (patch.body !== undefined) rejectNul(patch.body, 'body');
   const [row] = await db
     .update(notes)
     .set({
