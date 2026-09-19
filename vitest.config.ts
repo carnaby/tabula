@@ -7,5 +7,7 @@ export default defineConfig({
     fileParallelism: false,
     hookTimeout: 120_000,
     testTimeout: 20_000,
+    // Request logy Fastify (info) by zaplavili výstup testov; chyby (warn+) ostávajú viditeľné.
+    env: { LOG_LEVEL: 'warn' },
   },
 });
