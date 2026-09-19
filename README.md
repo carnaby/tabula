@@ -63,7 +63,7 @@ pnpm typecheck  # TypeScript type checking
 | `TABULA_TOKEN` | Bearer token pre MCP a UI (≥32 znakov) | `openssl rand -hex 32` |
 | `TABULA_CONNECTOR_SECRET` | Secret pre fallback URL v claude.ai (≥32 znakov, optional) | `openssl rand -hex 32` |
 | `PORT` | Port pre server (default 3000) | `3000` |
-| `HOST` | Host pre binding (default 127.0.0.1) | `127.0.0.1` alebo `0.0.0.0` |
+| `HOST` | Host pre binding (default 0.0.0.0) | `0.0.0.0` alebo `127.0.0.1` |
 | `WEB_DIST` | Cesta k buildu web UI (default `web/dist`) | `web/dist` |
 | `LOG_LEVEL` | Úroveň logovania: debug/info/warn/error (default info) | `info` |
 | `POSTGRES_PASSWORD` | Heslo PostgreSQL v docker-compose | `change-me` |
@@ -83,11 +83,15 @@ cd tabula
 2. Vytvor `.env` so silnými hodnotami:
 
 ```bash
+cat > .env <<'EOF'
 POSTGRES_PASSWORD=$(openssl rand -hex 32)
 TABULA_TOKEN=$(openssl rand -hex 32)
 TABULA_CONNECTOR_SECRET=$(openssl rand -hex 32)
-PORT=3000
+TABULA_PORT=3000
+EOF
 ```
+
+(alebo vlož tieto riadky ručne do súboru `.env`)
 
 3. Spusti docker-compose (build a run):
 
@@ -219,6 +223,6 @@ Orchestrátor prejde s tebou týmito krokmi. Táto tabuľka je referenčná.
 | 4 | Připoj Claude Code (viz vyššie), do CLAUDE.md vlož snippet so slugom a SessionStart hook | `list_projects` vracia všetky projekty |
 | 5 | Spusti reálnu session v Claude Code; agent zavolá `recall`, digest < 1 500 tokenov, na konci session uloží 0–3 záznamy | Záznamy vidíš v UI a môžeš ich editovať |
 | 6 | Pripojiš claude.ai (viz vyššie) a v konverzácii overiš, že `recall` funguje; zapíšeš si, ktorá auth varianta zabrala | `recall` pracuje, auth variant určený |
-| 7 | Porovnaj odhad tokenov (`znaky / 4`) so skutočným počtom tokenov digestu; podľa potreby uprav `estimateTokens` v `src/web/utils/recall.ts` | Token estimate je presný ±10 % |
+| 7 | Porovnaj odhad tokenov (`znaky / 4`) so skutočným počtom tokenov digestu; podľa potreby uprav `estimateTokens` v `src/domain/tokens.ts` | Token estimate sa zhoduje so skúškou |
 
 **Kritérium MVP:** agent na začiatku session zavolá `recall`, digest má v Recall preview < 1 500 tokenov, na konci session uloží 0–3 záznamy a tie vidíš a upravíš v UI.
