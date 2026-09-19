@@ -3,6 +3,7 @@ import type { Config } from '../config.js';
 import type { Db } from '../db/client.js';
 import { DomainError } from '../domain/errors.js';
 import { registerMcpRoutes } from '../mcp/routes.js';
+import { apiRoutes } from './api.js';
 
 // Secret v ceste /mcp/<secret> sa nesmie dostať do logov.
 const maskUrl = (url: string) => url.replace(/^\/mcp\/[^/?#]+/, '/mcp/***');
@@ -44,5 +45,6 @@ export async function buildApp(deps: {
 
   app.get('/healthz', async () => ({ ok: true }));
   registerMcpRoutes(app, deps);
+  await app.register(apiRoutes, { prefix: '/api', db: deps.db, config: deps.config });
   return app;
 }
