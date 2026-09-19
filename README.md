@@ -83,7 +83,7 @@ cd tabula
 2. Vytvor `.env` so silnými hodnotami:
 
 ```bash
-cat > .env <<'EOF'
+cat > .env <<EOF
 POSTGRES_PASSWORD=$(openssl rand -hex 32)
 TABULA_TOKEN=$(openssl rand -hex 32)
 TABULA_CONNECTOR_SECRET=$(openssl rand -hex 32)
@@ -91,7 +91,7 @@ TABULA_PORT=3000
 EOF
 ```
 
-(alebo vlož tieto riadky ručne do súboru `.env`)
+Ručne: vygeneruj hodnoty príkazom `openssl rand -hex 32` a vlož ich do `.env` ako `KĽÚČ=hodnota`.
 
 3. Spusti docker-compose (build a run):
 
