@@ -1,6 +1,6 @@
 # Tabula — Externá pamäť pre AI agentov
 
-**Tabula** je zdieľaná, externá pamäť pre AI agentov, dostupná cez MCP protokol. Rieši jeden problém: agent v novej session nevie, čo sa rozhodlo v predchádzajúcich sessions ani v iných projektoch. Tabula tie znalosti vytiahne mimo repozitár a dá ti nad nimi jedno UI, kde kurátor záznamov, upravuješ ich popis a kontroluješ kvalitu.
+**Tabula** je zdieľaná, externá pamäť pre AI agentov, dostupná cez MCP protokol. Rieši jeden problém: agent v novej session nevie, čo sa rozhodlo v predchádzajúcich sessions ani v iných projektoch. Tabula tie znalosti vytiahne mimo repozitár a dá ti nad nimi jedno UI, kde ako kurátor záznamov upravuješ ich popis a kontroluješ kvalitu.
 
 Do Tabuly idú rozhodnutia, pravidlá a gotchas — nie priebeh práce. **Kritické pravidlo: do Tabuly nikdy nejdú heslá, kľúče ani tokeny.**
 
@@ -133,29 +133,21 @@ claude mcp add tabula --scope user --transport http https://tabula.example.com/m
   --header "Authorization: Bearer <TABULA_TOKEN>" --header "X-Tabula-Agent: claude-code"
 ```
 
-Skontroluj v `~/.claude/settings.json`:
+Over registráciu:
 
-```json
-{
-  "mcpServers": {
-    "tabula": {
-      "transport": "http",
-      "url": "https://tabula.example.com/mcp",
-      "headers": {
-        "Authorization": "Bearer <TABULA_TOKEN>",
-        "X-Tabula-Agent": "claude-code"
-      }
-    }
-  }
-}
+```bash
+claude mcp list
+claude mcp get tabula
 ```
+
+(Claude Code ukladá tento zápis do `~/.claude.json` pod kľúčom `"type"`, nie `"transport"` — nekontroluj ten súbor ručne, použi vyššie uvedené príkazy.)
 
 Do `CLAUDE.md` projektu vlož [snippet zo `templates/claude-md-snippet.md`](templates/claude-md-snippet.md) s realnym slugom projektu a [SessionStart hook](templates/session-start-hook.json).
 
 **Tip:** Ak sa konektor nepodarí pripojiť, skontroluj:
 1. `https://tabula.example.com/healthz` vracia `{"ok":true}`
 2. `TABULA_TOKEN` v nastavení sa zhoduje s env premennou na serveri
-3. MCP server hovorí protokol 2025-11-25 (skontroluj logy)
+3. Server implementuje stateless Streamable HTTP transport s klasickým `initialize` handshakom (MCP 2025-11-25); klient, ktorý vie hovoriť len 2026-07-28, sa nebude vedieť inicializovať
 
 ## Pripojenie claude.ai
 
@@ -168,9 +160,9 @@ V claude.ai Settings → Connectors → Add custom connector:
 
 (Táto varianta je beta feature administrovaná org administrátorom v claude.ai.)
 
-### Fallback (ak header nefunguje): Query string
+### Fallback (ak header nefunguje): secret v ceste URL
 
-1. URL: `https://tabula.example.com/mcp/<TABULA_CONNECTOR_SECRET>`
+1. URL: `https://tabula.example.com/mcp/<TABULA_CONNECTOR_SECRET>` (secret je súčasť cesty, nie query string)
 2. Bez hlavičiek
 
 V tejto variante sa záznamy v Tabule označujú `agent_label = claude-ai`. Secret je heslo: **kto má URL, má prístup k pamäti.** Chráň ho ako token.
@@ -217,12 +209,12 @@ Orchestrátor prejde s tebou týmito krokmi. Táto tabuľka je referenčná.
 
 | Krok | Akcia | Kritérium |
 |---|---|---|
-| 1 | Klonuj repozitár na NAS, `.env` s `openssl rand -hex 32` hodnotami, `docker compose up -d --build` | Server běží |
+| 1 | Klonuj repozitár na NAS, `.env` s `openssl rand -hex 32` hodnotami, `docker compose up -d --build` | Server beží |
 | 2 | Reverse proxy + TLS na `tabula.example.com`; `curl -fsS https://tabula.example.com/healthz` vracia `{"ok":true}` | Health check OK |
 | 3 | V UI: vytvor projekty (`omnistra`, `limen`) s jednovetovým popisom; do `global` vlož pinned note „Session protocol" (copy z `docs/memory/` ak existuje) | Projekty existujú, global digest < 1 500 tokenov |
-| 4 | Připoj Claude Code (viz vyššie), do CLAUDE.md vlož snippet so slugom a SessionStart hook | `list_projects` vracia všetky projekty |
+| 4 | Pripoj Claude Code (pozri vyššie), do CLAUDE.md vlož snippet so slugom a SessionStart hook | `list_projects` vracia všetky projekty |
 | 5 | Spusti reálnu session v Claude Code; agent zavolá `recall`, digest < 1 500 tokenov, na konci session uloží 0–3 záznamy | Záznamy vidíš v UI a môžeš ich editovať |
-| 6 | Pripojiš claude.ai (viz vyššie) a v konverzácii overiš, že `recall` funguje; zapíšeš si, ktorá auth varianta zabrala | `recall` pracuje, auth variant určený |
+| 6 | Pripojíš claude.ai (pozri vyššie) a v konverzácii overiš, že `recall` funguje; zapíšeš si, ktorá auth varianta zabrala | `recall` pracuje, auth variant určený |
 | 7 | Porovnaj odhad tokenov (`znaky / 4`) so skutočným počtom tokenov digestu; podľa potreby uprav `estimateTokens` v `src/domain/tokens.ts` | Token estimate sa zhoduje so skúškou |
 
 **Kritérium MVP:** agent na začiatku session zavolá `recall`, digest má v Recall preview < 1 500 tokenov, na konci session uloží 0–3 záznamy a tie vidíš a upravíš v UI.

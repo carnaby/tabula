@@ -98,6 +98,21 @@ describe('MCP endpoint', () => {
   });
 });
 
+describe('connector secret unset', () => {
+  it('the secret route does not exist at all when TABULA_CONNECTOR_SECRET is unset', async () => {
+    const noSecretApp = await buildApp({ config: testConfig({ connectorSecret: undefined }), db });
+    try {
+      const res = await noSecretApp.inject({
+        method: 'POST', url: `/mcp/${'x'.repeat(32)}`, payload: '{}', headers: { 'content-type': 'application/json' },
+      });
+      expect(res.statusCode).toBe(404);
+      expect(res.json()).toEqual({ error: 'not found' });
+    } finally {
+      await noSecretApp.close();
+    }
+  });
+});
+
 describe('unexpected (non-domain) errors', () => {
   it('logs the real error and returns a generic message without leaking SQL', async () => {
     const throwingDb = {

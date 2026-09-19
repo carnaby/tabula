@@ -2,5 +2,8 @@ node_modules
 dist
 web/dist
 docs
-.env
 .git
+.superpowers
+.env
+.env.*
+!.env.example
