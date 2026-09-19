@@ -42,8 +42,11 @@ export async function buildApp(deps: {
   app.setErrorHandler<FastifyError>((err, _req, reply) => {
     if (err instanceof DomainError) return reply.code(err.status).send({ error: err.code, message: err.message });
     const status = (err as { statusCode?: number }).statusCode ?? 500;
-    if (status >= 500) app.log.error(err);
-    return reply.code(status).send({ error: status >= 500 ? 'internal' : 'bad_request', message: err.message });
+    if (status >= 500) {
+      app.log.error(err);
+      return reply.code(status).send({ error: 'internal', message: 'internal error' });
+    }
+    return reply.code(status).send({ error: 'bad_request', message: err.message });
   });
 
   app.get('/healthz', async () => ({ ok: true }));

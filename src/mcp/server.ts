@@ -11,7 +11,11 @@ const idParam = z.string().describe('Full uuid or the short #xxxx id shown in re
 const projectParam = z.string().describe('Project slug, e.g. "omnistra". Global records are always included.');
 const kindParam = z.enum(MEMORY_KINDS);
 
-async function run(fn: () => Promise<unknown>) {
+/** Logger je optional len kvôli miestam, kde sa server stavia bez requestu (napr. testy). */
+export type McpLogger = { error(obj: unknown): void };
+export type McpContext = AgentContext & { log?: McpLogger };
+
+async function runTool(log: McpLogger | undefined, fn: () => Promise<unknown>) {
   try {
     const result = await fn();
     const text = typeof result === 'string' ? result : JSON.stringify(result);
@@ -20,12 +24,14 @@ async function run(fn: () => Promise<unknown>) {
     if (e instanceof DomainError) {
       return { content: [{ type: 'text' as const, text: `${e.status}: ${e.message}` }], isError: true };
     }
-    throw e;
+    log?.error(e);
+    return { content: [{ type: 'text' as const, text: '500: internal error in Tabula; retry later' }], isError: true };
   }
 }
 
-export function buildMcpServer(ctx: AgentContext): McpServer {
+export function buildMcpServer(ctx: McpContext): McpServer {
   const server = new McpServer({ name: 'tabula', version: '0.1.0' });
+  const run = (fn: () => Promise<unknown>) => runTool(ctx.log, fn);
 
   server.registerTool('list_projects', { description: D.list_projects, inputSchema: z.object({}) }, () =>
     run(() => agentListProjects(ctx)),

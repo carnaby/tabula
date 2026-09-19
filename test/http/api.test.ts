@@ -7,6 +7,9 @@ const db = useTestDb();
 let app: FastifyInstance;
 beforeAll(async () => {
   app = await buildApp({ config: testConfig(), db });
+  app.get('/__boom', () => {
+    throw new Error('Failed query: SELECT secret FROM x');
+  });
 });
 afterAll(() => app.close());
 
@@ -64,5 +67,12 @@ describe('REST API', () => {
 
   it('validates enum query params', async () => {
     expect((await call('GET', '/api/memories?kind=nonsense')).statusCode).toBe(400);
+  });
+
+  it('does not leak internal error details in 500 responses', async () => {
+    const res = await app.inject({ method: 'GET', url: '/__boom' });
+    expect(res.statusCode).toBe(500);
+    expect(res.json()).toEqual({ error: 'internal', message: 'internal error' });
+    expect(res.body).not.toContain('secret');
   });
 });

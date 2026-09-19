@@ -11,7 +11,7 @@ const METHOD_NOT_ALLOWED = { jsonrpc: '2.0', error: { code: -32000, message: 'Me
 export function registerMcpRoutes(app: FastifyInstance, deps: { db: Db; config: Config }): void {
   // Stateless: nový server + transport na každý request, agentLabel ide do closure.
   const handle = async (req: FastifyRequest, reply: FastifyReply, agentLabel: string) => {
-    const server = buildMcpServer({ db: deps.db, agentLabel });
+    const server = buildMcpServer({ db: deps.db, agentLabel, log: req.log });
     const transport = new NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     reply.raw.on('close', () => {
       void transport.close();

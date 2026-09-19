@@ -2,6 +2,7 @@ import type { AddressInfo } from 'node:net';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import type { Db } from '../../src/db/client.js';
 import { createMemory, getMemory } from '../../src/domain/memories.js';
 import { buildApp } from '../../src/http/app.js';
 import { seedProject, TEST_SECRET, TEST_TOKEN, testConfig, useTestDb } from '../helpers.js';
@@ -18,9 +19,9 @@ beforeAll(async () => {
 afterAll(() => app.close());
 beforeEach(() => seedProject(db, 'demo'));
 
-async function connect(path: string, headers: Record<string, string> = {}) {
+async function connect(path: string, headers: Record<string, string> = {}, baseUrl = base) {
   const client = new Client({ name: 'tabula-test', version: '0.0.0' });
-  await client.connect(new StreamableHTTPClientTransport(new URL(base + path), { requestInit: { headers } }));
+  await client.connect(new StreamableHTTPClientTransport(new URL(baseUrl + path), { requestInit: { headers } }));
   return client;
 }
 const bearer = { Authorization: `Bearer ${TEST_TOKEN}`, 'X-Tabula-Agent': 'claude-code' };
@@ -94,6 +95,33 @@ describe('MCP endpoint', () => {
   it('answers GET on the connector path with 405, never with the 404 that logs the raw url', async () => {
     expect((await fetch(`${base}/mcp/${TEST_SECRET}`)).status).toBe(405);
     expect((await fetch(`${base}/mcp/${'w'.repeat(32)}`)).status).toBe(404);
+  });
+});
+
+describe('unexpected (non-domain) errors', () => {
+  it('logs the real error and returns a generic message without leaking SQL', async () => {
+    const throwingDb = {
+      execute: () => {
+        throw new Error('Failed query: SELECT p.id, p.name FROM projects p\nparams:');
+      },
+    } as unknown as Db;
+    const lines: string[] = [];
+    const app2 = await buildApp({
+      config: testConfig(), db: throwingDb, logStream: { write: (msg) => void lines.push(msg) },
+    });
+    await app2.listen({ port: 0, host: '127.0.0.1' });
+    const base2 = `http://127.0.0.1:${(app2.server.address() as AddressInfo).port}`;
+    try {
+      const client = await connect('/mcp', bearer, base2);
+      const r = await client.callTool({ name: 'list_projects', arguments: {} });
+      expect(r.isError).toBe(true);
+      expect(textOf(r)).toBe('500: internal error in Tabula; retry later');
+      expect(textOf(r)).not.toContain('Failed query');
+      await client.close();
+    } finally {
+      await app2.close();
+    }
+    expect(lines.some((l) => l.includes('Failed query'))).toBe(true);
   });
 });
 
