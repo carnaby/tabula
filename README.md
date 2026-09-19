@@ -67,45 +67,59 @@ pnpm typecheck  # TypeScript type checking
 | `POSTGRES_PASSWORD` | Heslo PostgreSQL v docker-compose | `change-me` |
 | `TABULA_PORT` | Host port v docker-compose (default 3000) | `3000` |
 
-## Deploy na NAS
+## Nasadenie na NAS host
 
-### Príprava
+Produkčná inštancia beží na NAS host (`ssh <user>@<host>`) ako Docker Compose stack v `/srv/tabula`. Repozitár sa na NAS neklonuje — stack iba ťahá hotový image z GHCR, ktorý builduje GitHub Actions (`.github/workflows/ci.yml`).
 
-1. Na NAS sklonuj repozitár:
+### Adresárová štruktúra na NAS
 
-```bash
-git clone https://github.com/<org>/tabula.git
-cd tabula
+```
+/srv/tabula/
+├── docker-compose.yml   # kópia deploy/docker-compose.nas.yml z repa
+├── .env                 # POSTGRES_PASSWORD, TABULA_TOKEN, TABULA_CONNECTOR_SECRET, TAG=latest
+├── db/                  # Postgres data volume
+└── backups/             # výstup deploy/backup-db.sh
 ```
 
-2. Vytvor `.env` so silnými hodnotami:
+`.env` obsahuje:
 
 ```bash
-cat > .env <<EOF
-POSTGRES_PASSWORD=$(openssl rand -hex 32)
-TABULA_TOKEN=$(openssl rand -hex 32)
-TABULA_CONNECTOR_SECRET=$(openssl rand -hex 32)
-TABULA_PORT=3000
-EOF
+POSTGRES_PASSWORD=<openssl rand -hex 32>
+TABULA_TOKEN=<openssl rand -hex 32>
+TABULA_CONNECTOR_SECRET=<openssl rand -hex 32>
+TAG=latest
 ```
 
-Ručne: vygeneruj hodnoty príkazom `openssl rand -hex 32` a vlož ich do `.env` ako `KĽÚČ=hodnota`.
+Na NAS pozn.: neinteraktívne shelly (ssh príkazy, NAS Task Scheduler) majú PATH bez `/usr/local/bin`, kam NAS Container Manager symlinkuje `docker` — používaj preto vždy absolútnu cestu `/usr/local/bin/docker`.
 
-3. Spusti docker-compose (build a run):
+### Prvé nasadenie
+
+1. Na NAS vytvor `/srv/tabula/{db,backups}` a nahraj tam `deploy/docker-compose.nas.yml` (ako `docker-compose.yml`) a `.env` s hodnotami vyššie.
+2. Spusti stack:
 
 ```bash
-docker compose up -d --build
+cd /srv/tabula && /usr/local/bin/docker compose up -d
 ```
 
-Migrácie sa spúšťajú automaticky pri štarte aplikácie.
+Migrácie sa spúšťajú automaticky pri štarte aplikácie (`Dockerfile` CMD).
 
-### Reverse proxy
+### Priebežné aktualizácie
 
-Nakonfiguruj reverse proxy pre `tabula.example.com` → `http://<nas>:3000`. Proxy musí:
-- Preposlať hlavičku `Authorization` bez zmeny
-- Nesmie bufferovať odpovede (`text/event-stream`)
-- Timeout aspoň 60 sekúnd
-- Mať SSL/TLS (Let's Encrypt)
+Push do `main` spustí GitHub Actions, ktorý po zelených testoch zbuilduje a pushne `ghcr.io/carnaby/tabula:latest`. Watchtower (beží na NAS, label-enabled, kontroluje kontajnery každých 5 minút) potom automaticky stiahne nový image a prekreslí `tabula-app`.
+
+Manuálna aktualizácia (ak nechceš čakať na Watchtower):
+
+```bash
+cd /srv/tabula && /usr/local/bin/docker compose pull && /usr/local/bin/docker compose up -d
+```
+
+Rollback: v `.env` nastav `TAG=sha-<short>` (konkrétny build z GHCR, tag `type=sha` z CI) a spusti `docker compose up -d` znova.
+
+### Reverse proxy a certifikát
+
+NAS → Control Panel → Login Portal → Advanced → Reverse Proxy: nové pravidlo, zdroj HTTPS `tabula.example.com:443`, cieľ HTTP `localhost:3300` (kontajner `tabula-app` je naviazaný len na `127.0.0.1:3300`, viď `deploy/docker-compose.nas.yml`).
+
+Certifikát: NAS → Control Panel → Security → Certificate → pridaj Let's Encrypt certifikát pre `tabula.example.com` a priraď ho k vyššie vytvorenému reverse proxy pravidlu.
 
 Health check:
 
@@ -116,11 +130,7 @@ curl -fsS https://tabula.example.com/healthz
 
 ## Záloha
 
-Denný cron na NAS (odporúčané):
-
-```bash
-docker compose exec -T db pg_dump -U tabula tabula | gzip > tabula-$(date +%F).sql.gz
-```
+`deploy/backup-db.sh` skopírovaný do `/srv/tabula/backup-db.sh` na NAS, naplánovaný v NAS Task Scheduler ako denná úloha (`bash /srv/tabula/backup-db.sh`). Zálohy (`tabula-YYYYMMDD-HHMMSS.sql.gz`) idú do `/srv/tabula/backups`, staršie ako 30 dní sa automaticky mažú.
 
 ## Pripojenie Claude Code
 

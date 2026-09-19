@@ -1,0 +1,58 @@
+# Deployed verbatim to /srv/tabula/docker-compose.yml on the NAS host.
+# This stack only ever pulls the prebuilt image from GHCR (published by .github/workflows/ci.yml
+# on every push to main); building on the NAS itself is not supported (no repo checkout there),
+# so there is no `build:` block for the `app` service below.
+#
+# `name:` is pinned explicitly so this file's project name doesn't depend on the directory it
+# happens to run from (e.g. a local `docker compose -f deploy/docker-compose.nas.yml config`
+# dry-run from the repo root), and so it can never collide with another stack's project name.
+name: tabula
+
+services:
+  app:
+    image: ghcr.io/carnaby/tabula:${TAG:-latest}
+    container_name: tabula-app
+    restart: unless-stopped
+    # Bound to loopback only: NAS's reverse proxy runs on the same host and forwards
+    # tabula.example.com -> 127.0.0.1:3300 -> this container's port 3000. The app speaks plain
+    # HTTP with a bearer token in the Authorization header; binding to 127.0.0.1 (instead of
+    # 0.0.0.0 or a bare host port) keeps that plaintext HTTP + bearer combination off the LAN --
+    # only the local reverse proxy (which terminates TLS) can reach it.
+    ports:
+      - '127.0.0.1:3300:3000'
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgres://tabula:${POSTGRES_PASSWORD}@db:5432/tabula
+      - TABULA_TOKEN=${TABULA_TOKEN}
+      - TABULA_CONNECTOR_SECRET=${TABULA_CONNECTOR_SECRET:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [tabula]
+    labels: ['com.centurylinklabs.watchtower.enable=true']
+    # No explicit healthcheck block: the image itself declares HEALTHCHECK (wget against
+    # 127.0.0.1:3000/healthz, see Dockerfile) and compose/docker respect that image default
+    # when the service doesn't override it.
+
+  db:
+    image: postgres:16-alpine
+    container_name: tabula-db
+    restart: unless-stopped
+    user: "1000:1000"
+    environment:
+      - POSTGRES_DB=tabula
+      - POSTGRES_USER=tabula
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - /srv/tabula/db:/var/lib/postgresql/data
+    networks: [tabula]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tabula -d tabula']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # No watchtower label: Postgres is not auto-updated by Watchtower, only the app image is.
+
+networks:
+  tabula:
+    driver: bridge
