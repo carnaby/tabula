@@ -96,3 +96,39 @@ describe('MCP endpoint', () => {
     expect((await fetch(`${base}/mcp/${'w'.repeat(32)}`)).status).toBe(404);
   });
 });
+
+describe('connector secret in logs', () => {
+  it('never writes the secret to info-level logs, whatever the method or path shape', async () => {
+    const lines: string[] = [];
+    const prevLevel = process.env.LOG_LEVEL;
+    process.env.LOG_LEVEL = 'info';
+    const logged = await buildApp({ config: testConfig(), db, logStream: { write: (msg) => void lines.push(msg) } });
+    process.env.LOG_LEVEL = prevLevel;
+    try {
+      const init = {
+        jsonrpc: '2.0', id: 1, method: 'initialize',
+        params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 't', version: '0' } },
+      };
+      const ok = await logged.inject({
+        method: 'POST', url: `/mcp/${TEST_SECRET}`, payload: init,
+        headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+      });
+      expect(ok.statusCode).toBe(200);
+      const probes = [
+        ['POST', `/mcp/${TEST_SECRET}/`], ['GET', `/mcp/${TEST_SECRET}/`], ['PUT', `/mcp/${TEST_SECRET}`],
+        ['PATCH', `/mcp/${TEST_SECRET}`], ['OPTIONS', `/mcp/${TEST_SECRET}`], ['GET', `/MCP/${TEST_SECRET}`],
+      ] as const;
+      for (const [method, url] of probes) {
+        const r = await logged.inject(
+          method === 'POST' ? { method, url, payload: '{}', headers: { 'content-type': 'application/json' } } : { method, url },
+        );
+        expect(r.statusCode, `${method} ${url}`).toBe(404);
+        expect(r.json()).toEqual({ error: 'not found' });
+      }
+      expect(lines.length).toBeGreaterThan(probes.length);
+      expect(lines.filter((l) => l.includes(TEST_SECRET))).toEqual([]);
+    } finally {
+      await logged.close();
+    }
+  });
+});
