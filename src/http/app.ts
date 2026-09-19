@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import type { Config } from '../config.js';
 import type { Db } from '../db/client.js';
@@ -46,5 +49,13 @@ export async function buildApp(deps: {
   app.get('/healthz', async () => ({ ok: true }));
   registerMcpRoutes(app, deps);
   await app.register(apiRoutes, { prefix: '/api', db: deps.db, config: deps.config });
+
+  const webRoot = resolve(deps.config.webDist);
+  if (existsSync(webRoot)) {
+    await app.register(fastifyStatic, { root: webRoot, index: 'index.html' });
+  } else {
+    app.log.warn({ webRoot }, 'web build not found; UI is not served');
+  }
+
   return app;
 }
