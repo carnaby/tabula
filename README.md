@@ -12,16 +12,10 @@ Do Tabuly idú rozhodnutia, pravidlá a gotchas — nie priebeh práce. **Kritic
 pnpm install
 ```
 
-Spustí PostgreSQL (vyžaduje Docker):
+Spusti dev PostgreSQL (vyžaduje Docker). Kontajner `tabula-dev-db` s volume `tabula-dev-pg` na porte 5432, dáta prežijú reštart; príkaz ho pri ďalšom spustení len naštartuje:
 
 ```bash
-docker run --rm -d \
-  --name tabula-db \
-  -e POSTGRES_DB=tabula \
-  -e POSTGRES_USER=tabula \
-  -e POSTGRES_PASSWORD=change-me \
-  -p 5432:5432 \
-  postgres:16-alpine
+pnpm db:dev
 ```
 
 Vytvor `.env` zo šablóny `.env.example`:
@@ -40,11 +34,15 @@ Backend (MCP server + REST API, port 3000 podľa `PORT`):
 pnpm dev
 ```
 
-Frontend (Vite dev server, port 5173):
+Frontend (Vite dev server, port 5173; `/api` proxyuje na `TABULA_API`, default `http://localhost:3000`):
 
 ```bash
 pnpm dev:web
+# ak backend beží na inom porte (napr. PORT=3100 v .env):
+TABULA_API=http://localhost:3100 pnpm dev:web
 ```
+
+Ak `/api` v prehliadači vracia `502 Bad Gateway`, backend nebeží — pozri výstup `pnpm dev` (najčastejšie nebeží DB z `pnpm db:dev`).
 
 Otvor [http://localhost:5173](http://localhost:5173) v prehliadači a zadaj bearer token (`TABULA_TOKEN` z `.env`).
 
