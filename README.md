@@ -127,7 +127,7 @@ One Node.js process serves everything: the MCP endpoint (`/mcp`), the REST API f
 ### Run it with Docker Compose
 
 ```bash
-git clone https://github.com/carnaby/tabula.git && cd tabula
+git clone https://github.com/carnaby/tabula-mcp.git && cd tabula-mcp
 cat > .env <<EOF
 POSTGRES_PASSWORD=$(openssl rand -hex 32)
 TABULA_TOKEN=$(openssl rand -hex 32)
