@@ -3,9 +3,15 @@ import { z } from 'zod';
 import {
   type AgentContext, agentDeprecate, agentGet, agentListProjects, agentRecall, agentRemember, agentSearch,
 } from '../agent/operations.js';
-import { DomainError } from '../domain/errors.js';
-import { MEMORY_KINDS } from '../domain/validation.js';
+import { badRequest, DomainError } from '../domain/errors.js';
+import { createProject } from '../domain/projects.js';
+import { MEMORY_KINDS, validateProjectSlug } from '../domain/validation.js';
 import { TOOL_DESCRIPTIONS as D } from './descriptions.js';
+import { claudeMdSection } from './snippet.js';
+
+const SERVER_INSTRUCTIONS = `Tabula is a backup memory shared across machines and clients. It ranks below the code and the client's own local memory: on a conflict they win, and the Tabula record gets fixed.
+Use Tabula only in a project whose CLAUDE.md (or project instructions) has a "Memory (Tabula)" section naming its Tabula project. Without that section do not call recall, search or remember, and never guess a project slug.
+When the user explicitly asks to start using Tabula in a project: call setup_project with the project folder name as the slug, put the section it returns into CLAUDE.md (create the file if it is missing; replace an older "Memory (Tabula)" section), then call recall.`;
 
 const idParam = z.string().describe('Full uuid or the short #xxxx id shown in recall and search.');
 const projectParam = z.string().describe('Project slug, e.g. "omnistra". Global records are always included.');
@@ -30,7 +36,7 @@ async function runTool(log: McpLogger | undefined, fn: () => Promise<unknown>) {
 }
 
 export function buildMcpServer(ctx: McpContext): McpServer {
-  const server = new McpServer({ name: 'tabula', version: '0.1.0' });
+  const server = new McpServer({ name: 'tabula', version: '0.1.0' }, { instructions: SERVER_INSTRUCTIONS });
   const run = (fn: () => Promise<unknown>) => runTool(ctx.log, fn);
 
   server.registerTool('list_projects', { description: D.list_projects, inputSchema: z.object({}) }, () =>
@@ -86,6 +92,29 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       inputSchema: z.object({ id: idParam, reason: z.string().describe('Why the record is no longer valid.') }),
     },
     (a) => run(() => agentDeprecate(ctx, a)),
+  );
+
+  server.registerTool(
+    'setup_project',
+    {
+      description: D.setup_project,
+      inputSchema: z.object({
+        id: z.string().describe('Project slug = project folder name in lowercase (letters, digits, dashes, max 40).'),
+        name: z.string().optional().describe('Display name; defaults to the slug.'),
+        description: z.string().optional().describe('One sentence about the project.'),
+      }),
+    },
+    (a) =>
+      run(async () => {
+        const id = validateProjectSlug(a.id);
+        if (id === 'global') {
+          throw badRequest('"global" is not a project to onboard; it holds rules shared by every project. Use the project folder name as the slug.');
+        }
+        const existing = (await agentListProjects(ctx)).find((p) => p.id === id);
+        if (existing) return { created: false, project: existing, claude_md_section: claudeMdSection(id) };
+        const project = await createProject(ctx.db, { id, name: a.name ?? id, description: a.description });
+        return { created: true, project, claude_md_section: claudeMdSection(id) };
+      }),
   );
 
   return server;

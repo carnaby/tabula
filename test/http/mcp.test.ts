@@ -1,10 +1,13 @@
 import type { AddressInfo } from 'node:net';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../../src/db/client.js';
+import { projects } from '../../src/db/schema.js';
 import { createMemory, getMemory } from '../../src/domain/memories.js';
 import { buildApp } from '../../src/http/app.js';
+import { claudeMdSection } from '../../src/mcp/snippet.js';
 import { seedProject, TEST_SECRET, TEST_TOKEN, testConfig, useTestDb } from '../helpers.js';
 
 const db = useTestDb();
@@ -29,12 +32,63 @@ type Content = Array<{ type: string; text: string }>;
 const textOf = (r: { content?: unknown }) => (r.content as Content)[0]!.text;
 
 describe('MCP endpoint', () => {
-  it('exposes exactly the six tools', async () => {
+  it('exposes exactly the seven tools', async () => {
     const client = await connect('/mcp', bearer);
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name).sort()).toEqual(['deprecate', 'get', 'list_projects', 'recall', 'remember', 'search']);
-    expect(tools.find((t) => t.name === 'recall')!.description).toMatch(/^Call this FIRST in every session/);
+    expect(tools.map((t) => t.name).sort()).toEqual([
+      'deprecate', 'get', 'list_projects', 'recall', 'remember', 'search', 'setup_project',
+    ]);
+    expect(tools.find((t) => t.name === 'recall')!.description).toMatch(/^Call at the start of a session/);
     await client.close();
+  });
+
+  it('sends server instructions on initialize', async () => {
+    const client = await connect('/mcp', bearer);
+    const ins = client.getInstructions();
+    expect(ins).toMatch(/^Tabula is a backup memory shared across machines and clients\./);
+    expect(ins).toContain('call setup_project');
+    await client.close();
+  });
+
+  describe('setup_project', () => {
+    const call = async (args: Record<string, unknown>) => {
+      const client = await connect('/mcp', bearer);
+      try {
+        return await client.callTool({ name: 'setup_project', arguments: args });
+      } finally {
+        await client.close();
+      }
+    };
+
+    it('creates a new project and returns the CLAUDE.md section', async () => {
+      const r = await call({ id: 'fresh-one', description: 'A fresh project' });
+      expect(r.isError).toBeFalsy();
+      const out = JSON.parse(textOf(r));
+      expect(out.created).toBe(true);
+      expect(out.project).toMatchObject({ id: 'fresh-one', name: 'fresh-one', description: 'A fresh project' });
+      expect(out.claude_md_section).toBe(claudeMdSection('fresh-one'));
+    });
+
+    it('leaves an existing project unchanged', async () => {
+      const out = JSON.parse(textOf(await call({ id: 'demo', name: 'Other', description: 'changed?' })));
+      expect(out.created).toBe(false);
+      expect(out.project).toMatchObject({ id: 'demo', name: 'demo', description: 'demo project' });
+      expect(out.claude_md_section).toContain('`demo`');
+      const [row] = await db.select().from(projects).where(eq(projects.id, 'demo'));
+      expect(row).toMatchObject({ name: 'demo', description: 'demo project' });
+    });
+
+    it('rejects an invalid slug with a clear error', async () => {
+      const r = await call({ id: 'My Project' });
+      expect(r.isError).toBe(true);
+      expect(textOf(r)).toMatch(/^400: project slug "My Project" is invalid: use lowercase letters, digits and dashes/);
+    });
+
+    it('rejects global', async () => {
+      const r = await call({ id: 'global' });
+      expect(r.isError).toBe(true);
+      expect(textOf(r)).toMatch(/^400: "global" is not a project to onboard/);
+    });
   });
 
   it('remember then recall round-trips and records the agent label', async () => {

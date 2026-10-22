@@ -193,9 +193,13 @@ Tabula bez protokolu sa nepoužije — MCP tool je pasívny. Protokol musí byť
    - Pridaj do `.claude/settings.json` projektu
    - Vypiše pripomienku na začiatku session
 
+### Nový projekt
+
+Bez sekcie „Memory (Tabula)" v CLAUDE.md (alebo project instructions) agenti Tabulu nepoužijú. Nový projekt zapojíš tak, že agentovi povieš „používaj Tabulu v tomto projekte": zavolá `setup_project` (vytvorí projekt so slugom podľa názvu priečinka, ak ešte neexistuje), zapíše sekciu do CLAUDE.md a zavolá `recall`. Agent projekt nikdy nezakladá sám od seba.
+
 ### Projektový slug
 
-Slug musí existovať v Tabule UI pred prvým použitím. Vytvoriť ho môže len ty (admin).
+Slug musí existovať v Tabule pred prvým použitím. Vytvoríš ho v UI, alebo ho agent vytvorí cez `setup_project` na tvoju výslovnú žiadosť.
 
 ## Prvé dva týždne
 

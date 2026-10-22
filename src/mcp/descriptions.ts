@@ -1,10 +1,8 @@
 export const TOOL_DESCRIPTIONS = {
   list_projects: `List Tabula projects: slug, one-line description, number of active memories and notes.
-Call it when you are unsure which project slug to use. Never invent a slug; projects are created by the human.`,
+Call it when you are unsure which project slug to use. Never invent a slug; projects are created by the human or, on the user's explicit request, by setup_project.`,
 
-  recall: `Call this FIRST in every session, before reading code. Returns the
-active rules, gotchas, decisions and facts for a project plus global ones.
-Do not call search for things already in the digest.`,
+  recall: `Call at the start of a session, before reading code, when the project's CLAUDE.md (or project instructions) names a Tabula project. Returns the active rules, gotchas, decisions and facts for that project plus global ones. Without such a section do not call it, and never guess a slug. Do not call search for things already in the digest.`,
 
   search: `Full-text search over memories and notes. Use before remember to
 check whether a similar record already exists, and when you need something
@@ -28,4 +26,6 @@ not even as a fact.`,
   deprecate: `Mark a memory as no longer valid, with a reason. Use when the
 code or a decision has changed. You cannot deprecate human-authored records
 or notes; instead, remember a fact describing the discrepancy.`,
+
+  setup_project: `Onboard a project into Tabula. Call it ONLY when the user explicitly asks to start using Tabula in this project — never on your own initiative. Slug = the project folder name in lowercase (letters, digits, dashes). Creates the project if it does not exist yet (name defaults to the slug; give a one-sentence description of the project) and returns the "Memory (Tabula)" section to put into the project's CLAUDE.md. If the project already exists it is left unchanged and the section is returned again.`,
 } as const;
