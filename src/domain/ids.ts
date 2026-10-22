@@ -12,7 +12,7 @@ export function parseIdRef(raw: string): IdRef {
   throw badRequest(`id "${raw}" must be a uuid or its first 4+ hex characters (e.g. #a1f3)`);
 }
 
-/** Najkratšia spoločná dĺžka prefixu (>= min), pri ktorej sú všetky id jedinečné. */
+/** Shortest common prefix length (>= min) at which all ids are unique. */
 export function shortIds(ids: readonly string[], min = 4): Map<string, string> {
   const unique = [...new Set(ids)];
   for (let len = min; len <= 36; len++) {

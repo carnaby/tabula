@@ -17,7 +17,7 @@ const idParam = z.string().describe('Full uuid or the short #xxxx id shown in re
 const projectParam = z.string().describe('Project slug, e.g. "omnistra". Global records are always included.');
 const kindParam = z.enum(MEMORY_KINDS);
 
-/** Logger je optional len kvôli miestam, kde sa server stavia bez requestu (napr. testy). */
+/** Logger is optional only for places where the server is built without a request (e.g. tests). */
 export type McpLogger = { error(obj: unknown): void };
 export type McpContext = AgentContext & { log?: McpLogger };
 

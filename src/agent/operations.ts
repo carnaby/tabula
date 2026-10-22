@@ -43,7 +43,7 @@ const noteView = (n: Note) => ({
 export type MemoryView = ReturnType<typeof memoryView>;
 export type NoteView = ReturnType<typeof noteView>;
 
-/** Záznam, ktorý agent smie meniť: len memory so source=agent. */
+/** A record the agent may modify: only memories with source=agent. */
 async function requireAgentWritable(db: Db, id: string): Promise<Memory> {
   const r = await resolveRecord(db, id);
   if (r.type === 'note' || r.record.source === 'human') throw forbidden(AGENT_READ_ONLY);

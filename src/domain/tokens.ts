@@ -1,6 +1,6 @@
 export const DIGEST_BUDGET = 1500;
 
-/** Hrubý odhad podľa spec: znaky / 4. Pre slovenčinu nepresný, kalibruje sa po prvom týždni. */
+/** Rough estimate per the spec: characters / 4. Imprecise for Slovak; to be calibrated after the first week. */
 export const estimateTokens = (text: string): number => Math.ceil(text.length / 4);
 
 export const wordCount = (text: string): number => {

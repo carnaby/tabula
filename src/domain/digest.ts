@@ -11,7 +11,7 @@ export type TrimStep =
   | 'decisions-omitted' | 'rules-first-sentence' | 'gotchas-first-sentence' | 'facts-omitted' | 'notes-omitted';
 export type Digest = { text: string; tokens: number; trimmed: TrimStep[]; overBudget: boolean };
 
-/** Prvé dva kroky sú zo spec; zvyšok je rozšírenie z plánu (rozhodnutie 6). Pinned notes sa neorezávajú nikdy. */
+/** The first two steps come from the spec; the rest is an extension from the plan (decision 6). Pinned notes are never trimmed. */
 const TRIM_ORDER: TrimStep[] = [
   'decisions-omitted', 'rules-first-sentence', 'gotchas-first-sentence', 'facts-omitted', 'notes-omitted',
 ];

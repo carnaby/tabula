@@ -29,7 +29,7 @@ if [ $STATUS -ne 0 ]; then
   exit $STATUS
 fi
 
-# Cleanup starych zaloh (30+ dni)
+# Clean up old backups (30+ days)
 find "$BACKUP_DIR" -name "tabula-*.sql.gz" -mtime +30 -delete
 
 echo "Database backup completed:"

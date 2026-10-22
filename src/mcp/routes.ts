@@ -9,7 +9,7 @@ import { buildMcpServer } from './server.js';
 const METHOD_NOT_ALLOWED = { jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed.' }, id: null };
 
 export function registerMcpRoutes(app: FastifyInstance, deps: { db: Db; config: Config }): void {
-  // Stateless: nový server + transport na každý request, agentLabel ide do closure.
+  // Stateless: a new server + transport per request; agentLabel is captured in the closure.
   const handle = async (req: FastifyRequest, reply: FastifyReply, agentLabel: string) => {
     const server = buildMcpServer({ db: deps.db, agentLabel, log: req.log });
     const transport = new NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
@@ -33,7 +33,7 @@ export function registerMcpRoutes(app: FastifyInstance, deps: { db: Db; config: 
       const header = req.headers['x-tabula-agent'];
       return handle(req, reply, header ? sanitizeAgentLabel(header) : 'claude-ai');
     });
-    // Klient po initialize skúša GET (SSE stream); bez tejto route by default 404 handler zalogoval URL so secretom.
+    // After initialize the client tries GET (SSE stream); without this route the default 404 handler would log the URL containing the secret.
     app.route<{ Params: { secret: string } }>({
       method: ['GET', 'DELETE'],
       url: '/mcp/:secret',

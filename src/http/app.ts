@@ -8,17 +8,17 @@ import { DomainError } from '../domain/errors.js';
 import { registerMcpRoutes } from '../mcp/routes.js';
 import { apiRoutes } from './api.js';
 
-// Secret v ceste /mcp/<secret> sa nesmie dostať do logov.
+// The secret in the /mcp/<secret> path must never reach the logs.
 const maskUrl = (url: string) => url.replace(/^\/mcp\/[^/?#]+/, '/mcp/***');
 
 export async function buildApp(deps: {
   config: Config;
   db: Db;
-  /** Len pre testy: kam písať logy (default stdout). */
+  /** Tests only: where to write logs (default stdout). */
   logStream?: { write(msg: string): void };
 }): Promise<FastifyInstance> {
   const secret = deps.config.connectorSecret;
-  // Maskuje aj secret mimo /mcp/<secret> (napr. /MCP/<secret>), keby sa URL ocitla v logu inou cestou.
+  // Also masks the secret outside /mcp/<secret> (e.g. /MCP/<secret>) in case the URL ends up in the log by another route.
   const mask = (url: string) => {
     const masked = maskUrl(url);
     return secret ? masked.split(secret).join('***') : masked;

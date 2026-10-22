@@ -2,13 +2,13 @@ import { badRequest } from './errors.js';
 
 export const LIMITS = { title: 120, body: 2000, noteSummary: 200 } as const;
 
-/** Poradie je zároveň poradie sekcií v digeste. */
+/** The order is also the order of sections in the digest. */
 export const MEMORY_KINDS = ['rule', 'gotcha', 'decision', 'fact'] as const;
 export type MemoryKind = (typeof MEMORY_KINDS)[number];
 
 export const charCount = (s: string): number => [...s].length;
 
-/** Postgres text stĺpce odmietnu NUL; radšej 400 než 500 z DB. */
+/** Postgres text columns reject NUL; better a 400 than a 500 from the DB. */
 export function rejectNul(value: string, field: string): void {
   if (value.includes('\u0000')) throw badRequest(`${field} must not contain NUL characters`);
 }

@@ -27,7 +27,7 @@ describe('schema', () => {
     const [row] = await db.execute<{ search: string }>(sql`SELECT search::text AS search FROM memories`);
     expect(row!.search).toContain("'drizzle':1A");
     expect(row!.search).toMatch(/'orm':\d+B/);
-    expect(row!.search).toContain("'migrácie'"); // simple config: bez stemmingu, diakritika ostáva
+    expect(row!.search).toContain("'migrácie'"); // simple config: no stemming, diacritics are kept
   });
 
   it('enforces the title length limit', async () => {
