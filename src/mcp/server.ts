@@ -14,7 +14,7 @@ Use Tabula only in a project whose CLAUDE.md (or project instructions) has a "Me
 When the user explicitly asks to start using Tabula in a project: call setup_project with the project folder name as the slug, put the section it returns into CLAUDE.md (create the file if it is missing; replace an older "Memory (Tabula)" section), then call recall.`;
 
 const idParam = z.string().describe('Full uuid or the short #xxxx id shown in recall and search.');
-const projectParam = z.string().describe('Project slug, e.g. "omnistra". Global records are always included.');
+const projectParam = z.string().describe('Project slug, e.g. "acme". Global records are always included.');
 const kindParam = z.enum(MEMORY_KINDS);
 
 /** Logger is optional only for places where the server is built without a request (e.g. tests). */

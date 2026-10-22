@@ -25,9 +25,9 @@ describe('projects', () => {
   });
 
   it('creates and updates a project, rejecting duplicates', async () => {
-    await createProject(db, { id: 'limen', name: 'Limen' });
-    await expect(createProject(db, { id: 'limen', name: 'X' })).rejects.toMatchObject({ code: 'conflict' });
-    const p = await updateProject(db, 'limen', { description: 'Gate' });
+    await createProject(db, { id: 'demo', name: 'Demo' });
+    await expect(createProject(db, { id: 'demo', name: 'X' })).rejects.toMatchObject({ code: 'conflict' });
+    const p = await updateProject(db, 'demo', { description: 'Gate' });
     expect(p.description).toBe('Gate');
   });
 });

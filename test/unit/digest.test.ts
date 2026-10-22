@@ -10,24 +10,24 @@ const note = (n: number, projectId: string, title: string, summary: string, body
   ({ id: id(n), projectId, title, summary, body, pinned, updatedAt: day(1) });
 
 const fixture: DigestInput = {
-  project: 'omnistra',
+  project: 'acme',
   date: '2026-09-19',
   memories: [
     mem(1, 'global', 'rule', 'Never give an agent raw shell access.', 'Expose domain-scoped tools only.', 1),
-    mem(2, 'omnistra', 'rule', 'Run tests via `pnpm test:unit`.', 'Vitest directly skips the DB setup. It also ignores env files.', 10),
-    mem(3, 'omnistra', 'rule', 'Migrations run from CI only.', 'Local runs drifted the schema twice.', 12),
-    mem(4, 'omnistra', 'gotcha', 'Cloud Run cold start kills long migrations.', 'Anything over ~60 s gets killed.', 5),
-    mem(5, 'omnistra', 'decision', 'Drizzle over Prisma', 'Typed schema, SQL migrations in repo.', 3),
-    mem(6, 'omnistra', 'fact', 'Production DB lives on the NAS', 'Not in Cloud Run.', 3),
+    mem(2, 'acme', 'rule', 'Run tests via `pnpm test:unit`.', 'Vitest directly skips the DB setup. It also ignores env files.', 10),
+    mem(3, 'acme', 'rule', 'Migrations run from CI only.', 'Local runs drifted the schema twice.', 12),
+    mem(4, 'acme', 'gotcha', 'Serverless cold start kills long migrations.', 'Anything over ~60 s gets killed.', 5),
+    mem(5, 'acme', 'decision', 'Drizzle over Prisma', 'Typed schema, SQL migrations in repo.', 3),
+    mem(6, 'acme', 'fact', 'Production DB lives on a managed host', 'Not in the app container.', 3),
   ],
   notes: [
-    note(7, 'omnistra', 'Architecture overview', 'Module boundaries and event contracts', 'one two three', false),
+    note(7, 'acme', 'Architecture overview', 'Module boundaries and event contracts', 'one two three', false),
     note(8, 'global', 'Session protocol', '', 'Verify before you claim.', true),
   ],
 };
 
 const FULL = [
-  '# Tabula · omnistra (+ global) · 2026-09-19',
+  '# Tabula · acme (+ global) · 2026-09-19',
   '',
   '## Rules (always follow)',
   '- [g] Never give an agent raw shell access. (#0001)',
@@ -38,14 +38,14 @@ const FULL = [
   '  Vitest directly skips the DB setup. It also ignores env files.',
   '',
   '## Gotchas',
-  '- Cloud Run cold start kills long migrations. (#0004)',
+  '- Serverless cold start kills long migrations. (#0004)',
   '  Anything over ~60 s gets killed.',
   '',
   '## Decisions (title only — `get` for the why)',
   '- Drizzle over Prisma (#0005)',
   '',
   '## Facts',
-  '- Production DB lives on the NAS (#0006)',
+  '- Production DB lives on a managed host (#0006)',
   '',
   '## Notes (human-authored, read-only — `get` for full text)',
   '- #0007 Architecture overview — Module boundaries and event contracts (3 words)',
@@ -65,9 +65,9 @@ describe('buildDigest', () => {
   });
 
   it('omits empty sections and explains an empty digest', () => {
-    const d = buildDigest({ project: 'limen', date: '2026-09-19', memories: [], notes: [] });
+    const d = buildDigest({ project: 'demo', date: '2026-09-19', memories: [], notes: [] });
     expect(d.text).toBe(
-      '# Tabula · limen (+ global) · 2026-09-19\n\nNo active memories or notes yet. Call `remember` when you make a decision a future session must know.\n',
+      '# Tabula · demo (+ global) · 2026-09-19\n\nNo active memories or notes yet. Call `remember` when you make a decision a future session must know.\n',
     );
   });
 
@@ -81,7 +81,7 @@ describe('buildDigest', () => {
   it('extends short ids when two records share a 4-char prefix', () => {
     const a = { ...fixture.memories[5]!, id: 'abcd1000-0000-4000-8000-000000000000' };
     const b = { ...fixture.memories[5]!, id: 'abcd2000-0000-4000-8000-000000000000', title: 'Other fact' };
-    const d = buildDigest({ project: 'omnistra', date: '2026-09-19', memories: [a, b], notes: [] });
+    const d = buildDigest({ project: 'acme', date: '2026-09-19', memories: [a, b], notes: [] });
     expect(d.text).toContain('(#abcd1)');
     expect(d.text).toContain('(#abcd2)');
   });
@@ -114,12 +114,12 @@ describe('buildDigest', () => {
   it('blames rules/gotchas, not pinned notes, when over budget with no notes at all', () => {
     const longSentence = 'x '.repeat(3000).trim();
     const input: DigestInput = {
-      project: 'omnistra',
+      project: 'acme',
       date: '2026-09-19',
       memories: [
-        mem(1, 'omnistra', 'rule', 'Rule one', longSentence, 1),
-        mem(2, 'omnistra', 'rule', 'Rule two', longSentence, 2),
-        mem(3, 'omnistra', 'gotcha', 'Gotcha one', longSentence, 3),
+        mem(1, 'acme', 'rule', 'Rule one', longSentence, 1),
+        mem(2, 'acme', 'rule', 'Rule two', longSentence, 2),
+        mem(3, 'acme', 'gotcha', 'Gotcha one', longSentence, 3),
       ],
       notes: [],
     };

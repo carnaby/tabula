@@ -33,7 +33,7 @@ export async function buildApp(deps: {
     },
   });
 
-  // Default 404 handler loguje "Route <METHOD>:<raw url> not found" (so secretom) a vracia URL v tele.
+  // Fastify's default 404 handler logs "Route <METHOD>:<raw url> not found" (which would include the connector secret) and echoes the URL in the body.
   app.setNotFoundHandler((req, reply) => {
     req.log.info({ req }, 'route not found');
     return reply.code(404).send({ error: 'not found' });

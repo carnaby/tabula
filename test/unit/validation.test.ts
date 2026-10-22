@@ -54,6 +54,6 @@ describe('sanitizeAgentLabel', () => {
 });
 
 describe('validateProjectSlug', () => {
-  it('accepts lowercase slugs', () => expect(validateProjectSlug('omnistra')).toBe('omnistra'));
+  it('accepts lowercase slugs', () => expect(validateProjectSlug('acme')).toBe('acme'));
   it('rejects uppercase and spaces', () => fails(() => validateProjectSlug('My Project'), /slug/));
 });

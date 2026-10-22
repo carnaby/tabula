@@ -15,7 +15,7 @@ describe('search', () => {
   });
 
   it('searches all projects when project is omitted', async () => {
-    await mem('alpha', 'Postgres runs on NAS');
+    await mem('alpha', 'Postgres runs on the primary host');
     await mem('beta', 'Postgres backups nightly');
     const hits = await search(db, { query: 'postgres' });
     expect(hits.map((h) => h.project).sort()).toEqual(['alpha', 'beta']);

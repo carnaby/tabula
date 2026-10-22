@@ -1,0 +1,56 @@
+# Example production stack. It only pulls the prebuilt image from GHCR (published by
+# .github/workflows/ci.yml on every push to main); there is no `build:` block, so no repo
+# checkout is needed on the host.
+#
+# Required env: POSTGRES_PASSWORD, TABULA_TOKEN. Optional: TAG, TABULA_PORT, TABULA_DATA_DIR,
+# PUID, PGID, TABULA_CONNECTOR_SECRET.
+#
+# `name:` is pinned so the project name doesn't depend on the directory this runs from.
+name: tabula
+
+services:
+  app:
+    image: ghcr.io/carnaby/tabula:${TAG:-latest}
+    container_name: tabula-app
+    restart: unless-stopped
+    # Loopback only: a TLS-terminating reverse proxy on the same host (e.g. tabula.example.com)
+    # forwards to this port. The app speaks plain HTTP with a bearer token, so it must not be
+    # reachable from the LAN.
+    ports:
+      - '127.0.0.1:${TABULA_PORT:-3300}:3000'
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgres://tabula:${POSTGRES_PASSWORD}@db:5432/tabula
+      - TABULA_TOKEN=${TABULA_TOKEN}
+      - TABULA_CONNECTOR_SECRET=${TABULA_CONNECTOR_SECRET:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [tabula]
+    # Optional: only used if you run Watchtower with label-enable.
+    labels: ['com.centurylinklabs.watchtower.enable=true']
+    # No healthcheck block: the image declares its own HEALTHCHECK (see Dockerfile).
+
+  db:
+    image: postgres:16-alpine
+    container_name: tabula-db
+    restart: unless-stopped
+    # Run as a host user so the data files are owned by it (bind mount, backups).
+    user: "${PUID:-1000}:${PGID:-1000}"
+    environment:
+      - POSTGRES_DB=tabula
+      - POSTGRES_USER=tabula
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ${TABULA_DATA_DIR:-./data}/db:/var/lib/postgresql/data
+    networks: [tabula]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tabula -d tabula']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # No watchtower label: only the app image is auto-updated, not Postgres.
+
+networks:
+  tabula:
+    driver: bridge

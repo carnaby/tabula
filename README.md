@@ -22,7 +22,7 @@ A memory has one of four kinds, and the kind decides how prominently it is shown
 - **rule** — how things are done (*"Run Nx in another directory as `pnpm -C <dir> exec nx`"*)
 - **gotcha** — a trap someone already fell into (*"Postgres `english` text search mangles Slovak words; use `simple`"*)
 - **decision** — what was decided and why (*"Drizzle over Prisma, because…"*)
-- **fact** — the state of the world that the code doesn't show (*"Production runs on the NAS, not in the cloud"*)
+- **fact** — the state of the world that the code doesn't show (*"Production runs on a single VPS, not in a managed cloud"*)
 
 Records belong to a **project** (a flat slug such as `music-creator`) or to the reserved project **`global`**, whose records are included everywhere. A memory is never edited by an agent in place: a newer one *supersedes* it (the old one is deprecated in the same transaction, so the history stays visible), or the agent *deprecates* it with a reason. Human-written records are read-only for agents.
 
@@ -235,3 +235,7 @@ Tabula is a working MVP in daily personal use with Claude Code and claude.ai. Th
 - OAuth instead of a static token, once there is more than one user.
 
 Deliberately out of scope: embeddings and RAG, automatic expiry, automatic contradiction detection, and inheritance between projects.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

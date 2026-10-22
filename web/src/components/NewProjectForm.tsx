@@ -20,7 +20,7 @@ export function NewProjectForm({ onCreated }: { onCreated: () => void }) {
           );
         }}
       >
-        <input placeholder="slug (e.g. omnistra)" value={draft.id} onChange={(e) => setDraft({ ...draft, id: e.target.value })} />
+        <input placeholder="slug (e.g. acme)" value={draft.id} onChange={(e) => setDraft({ ...draft, id: e.target.value })} />
         <input placeholder="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         <input
           placeholder="One-sentence description"
